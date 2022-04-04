@@ -8,7 +8,7 @@ namespace StocKings
    
     public class ParseResult
     {
-        public void LargeCapParser()
+        public void LargeCapParser(string myDirectory)
         {
             
             // Initiating excel
@@ -102,7 +102,7 @@ namespace StocKings
             // Disabling alerts
             excelApp.DisplayAlerts = false;
 
-            excelWorkbook.SaveAs(@"LargeCaps.xlsx");
+            excelWorkbook.SaveAs(myDirectory + @"\LargeCaps.xlsx");
             excelWorkbook.Close();
             excelApp.Quit();
 

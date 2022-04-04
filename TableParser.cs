@@ -44,8 +44,6 @@ namespace StocKings
                     return table;
                 }
 
-
-
             }
         }
 
@@ -70,6 +68,29 @@ namespace StocKings
                     return table;
                 }
 
+            }
+        }
+
+        public List<List<string>> GetYahooHistoricalPrices
+        {
+            get
+            {
+                try
+                {
+                    var table = htmlDoc.DocumentNode.SelectSingleNode("//table[@data-test='historical-prices']")
+                    .Descendants("tr")
+                     
+                    .Where(tr => tr.Elements("td").Count() > 1)
+                    .Select(tr => tr.Elements("td")
+                    .Select(td => td.InnerText.Trim()).ToList())
+                    .ToList();
+                    return table;
+                }
+                catch (Exception e)
+                {
+                    var table = new List<List<string>>();
+                    return table;
+                }
             }
         }
     }
