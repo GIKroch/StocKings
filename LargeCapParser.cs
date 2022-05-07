@@ -33,7 +33,29 @@ namespace StocKings
             ws.Range["B" + rowIndex.ToString()].Value = "Ticker";
             ws.Range["C" + rowIndex.ToString()].Value = "Market Cap";
             ws.Range["D" + rowIndex.ToString()].Value = "Country";
-            ws.Range["A:D"].ColumnWidth = 23;
+            ws.Range["A:R"].ColumnWidth = 23;
+
+            // We also specify column names which will remain empty in this step - will be filled with yahoo data 
+            ws.Range["E" + rowIndex.ToString()].Value2 = "Price 1 year ago";
+            ws.Range["F" + rowIndex.ToString()].Value2 = "Price 3 months ago";
+            ws.Range["G" + rowIndex.ToString()].Value2 = "Price 1 month ago";
+            ws.Range["H" + rowIndex.ToString()].Value2 = "Price 3 weeks ago";
+            ws.Range["I" + rowIndex.ToString()].Value2 = "Price 2 weeks ago";
+            ws.Range["J" + rowIndex.ToString()].Value2 = "Price 1 week ago";
+            ws.Range["K" + rowIndex.ToString()].Value2 = "Price Today";
+
+            ws.Range["L" + rowIndex.ToString()].Value2 = "1 year ratio";
+            ws.Range["M" + rowIndex.ToString()].Value2 = "3 months ratio";
+            ws.Range["N" + rowIndex.ToString()].Value2 = "1 month ratio";
+            ws.Range["O" + rowIndex.ToString()].Value2 = "3 weeks ratio";
+            ws.Range["P" + rowIndex.ToString()].Value2 = "2 weeks ratio";
+            ws.Range["Q" + rowIndex.ToString()].Value2 = "1 week ratio";
+
+            // Formatting percentage columns
+            ws.Range["L:Q"].NumberFormat = "###,##.00%";
+
+            // Bolding column headers
+            ws.Range["A1:R1"].Font.Bold = true;
             rowIndex++;
 
 

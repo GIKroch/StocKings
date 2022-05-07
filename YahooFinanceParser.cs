@@ -31,7 +31,63 @@ namespace StocKings
             return changeRatio;
 
         }
-        public List<List<float>> Parser(string companyTicker)
+
+        public float PriceDividendsParser(List<List<string>> PricesTable, int rowIndex, string direction)
+        {
+            //The limitation of parsing yahoo prices table by indexes is that we sometimes encounter dividends which have different row format
+            //This causes our code to break. 
+            //This function prevents code from breaking by iterrating through table until float value is found. 
+            //This means sometimes we extract a date not 90 days ago, but 91 days ago. 
+
+            var continueIter = true;
+            var price = new float();
+
+            while (continueIter)
+            {
+                var tableRow = new List<string>();
+                
+                if (direction == "backwards")
+                {
+                    tableRow = PricesTable[^rowIndex];
+                }
+                else
+                {
+                    tableRow = PricesTable[rowIndex];
+                }
+
+                Console.WriteLine(tableRow.Count);
+                if (tableRow.Count < 5)
+                {
+                    continue;
+                }
+                else
+                {
+                    price = float.Parse(tableRow[5], CultureInfo.InvariantCulture);
+                    continueIter = false;
+                }
+                rowIndex++;
+            }
+
+            return price;
+            
+        }
+
+        //Sometimes a price might not be available, therefore error handler returning 0s is introduced
+        public float PriceErrorHandler(List<List<string>> PricesTable, int rowIndex)
+        {
+            var price = new float();    
+            try { 
+                price = float.Parse(PricesTable[rowIndex][5], CultureInfo.InvariantCulture);
+                }
+            catch
+            {
+                price = 0;
+            }
+
+            return price;
+            
+        }
+        public List<List<float>> Parser(string companyTicker, string companyName)
         {
             // As Yahoo Finance loads its data dynamically we cannot query too long periods 
             // As only part of it will be captured by our HTML respone. 
@@ -54,7 +110,7 @@ namespace StocKings
                 companyTicker, quarterAgo, today);
 
             var urlYearly = string.Format("https://finance.yahoo.com/quote/{0}/history?period1={1}&period2={2}&interval=1d&filter=history&frequency=1d&includeAdjustedClose=true",
-                companyTicker, yearAgoDayBefore, yearAgo);
+                companyTicker, yearAgoDayBefore, yearAgo);            
 
             var TableParser = new TableParser(urlQuarterly);
             var TableParser2 = new TableParser(urlYearly);
@@ -62,16 +118,50 @@ namespace StocKings
             var historicalPricesTableQuarterly = TableParser.GetYahooHistoricalPrices;
             var historicalPricesTableYearly = TableParser2.GetYahooHistoricalPrices;
 
+            //If the ticker retrieved from CompaniesMarketRcap webpage does not stay in line with Yahoo convention
+            //Our parser will return emtpy list, which will further break the code. 
+            //In such a case we use YahooTickerParse class to try obtaining a matching yahoo ticker
+            
+            if(historicalPricesTableQuarterly.Count == 0){
+                Console.WriteLine(companyName);
+                var tickerParser = new YahooTickerParser();
+                companyTicker = tickerParser.GetTickers(companyName);
+                urlQuarterly = string.Format("https://finance.yahoo.com/quote/{0}/history?period1={1}&period2={2}&interval=1d&filter=history&frequency=1d&includeAdjustedClose=true",
+                companyTicker, quarterAgo, today);
+
+                urlYearly = string.Format("https://finance.yahoo.com/quote/{0}/history?period1={1}&period2={2}&interval=1d&filter=history&frequency=1d&includeAdjustedClose=true",
+                    companyTicker, yearAgoDayBefore, yearAgo);
+
+                TableParser = new TableParser(urlQuarterly);
+                TableParser2 = new TableParser(urlYearly);
+
+                historicalPricesTableQuarterly = TableParser.GetYahooHistoricalPrices;
+                historicalPricesTableYearly = TableParser2.GetYahooHistoricalPrices;
+                Console.WriteLine(urlYearly);
+
+            };
+
             //Now we extract dates we are interested in (only a few are useful for our analysis, 1year ago, 3 months ago, 1 month ago, 3 weeks ago, 2 weeks ago, 1 week ago, today)
             // As the prices are scraped from HTML they come as strings, we need to format them properly
+            // Another issue we must tackle is sometimes dividends are listed instead of prices for a particular day
+            // This means the we need to control for that, because otherwise the script will break - as dividends' row is in different format. 
+
+            var price1y = PriceErrorHandler(historicalPricesTableYearly, 1);
+
             
-            var price1y = float.Parse(historicalPricesTableYearly[^1][5], CultureInfo.InvariantCulture);
-            var price3m = float.Parse(historicalPricesTableQuarterly[90][5], CultureInfo.InvariantCulture);
-            var price1m = float.Parse(historicalPricesTableQuarterly[30][5], CultureInfo.InvariantCulture);
-            var price3w = float.Parse(historicalPricesTableQuarterly[21][5], CultureInfo.InvariantCulture);
-            var price2w = float.Parse(historicalPricesTableQuarterly[14][5], CultureInfo.InvariantCulture);
-            var price1w = float.Parse(historicalPricesTableQuarterly[7][5], CultureInfo.InvariantCulture);
-            var pricetoday = float.Parse(historicalPricesTableQuarterly[0][5], CultureInfo.InvariantCulture);
+            var price3m = PriceErrorHandler(historicalPricesTableQuarterly, 90);
+            var price1m = PriceErrorHandler(historicalPricesTableQuarterly, 30);
+            var price3w = PriceErrorHandler(historicalPricesTableQuarterly, 21);
+            var price2w = PriceErrorHandler(historicalPricesTableQuarterly, 14);
+            var price1w = PriceErrorHandler(historicalPricesTableQuarterly, 7);
+            var pricetoday = PriceErrorHandler(historicalPricesTableQuarterly, 0);
+
+            //var price3m = float.Parse(historicalPricesTableQuarterly[90][5], CultureInfo.InvariantCulture);
+            //var price1m = float.Parse(historicalPricesTableQuarterly[30][5], CultureInfo.InvariantCulture);
+            //var price3w = float.Parse(historicalPricesTableQuarterly[21][5], CultureInfo.InvariantCulture);
+            //var price2w = float.Parse(historicalPricesTableQuarterly[14][5], CultureInfo.InvariantCulture);
+            //var price1w = float.Parse(historicalPricesTableQuarterly[7][5], CultureInfo.InvariantCulture);
+            //var pricetoday = float.Parse(historicalPricesTableQuarterly[0][5], CultureInfo.InvariantCulture);
 
             var change1y = ChangeRatio(price1y, pricetoday);
             var change3m = ChangeRatio(price3m, pricetoday);
@@ -96,7 +186,7 @@ namespace StocKings
                 historicalPrices, calculatedRatios
             };
 
-            
+            Thread.Sleep(2000);
             return outputList;
             
 
