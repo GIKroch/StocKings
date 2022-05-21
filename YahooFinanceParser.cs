@@ -87,7 +87,7 @@ namespace StocKings
             return price;
             
         }
-        public List<List<float>> Parser(string companyTicker, string companyName)
+        public List<List<object>> Parser(string companyTicker, string companyName)
         {
             // As Yahoo Finance loads its data dynamically we cannot query too long periods 
             // As only part of it will be captured by our HTML respone. 
@@ -147,21 +147,12 @@ namespace StocKings
             // This means the we need to control for that, because otherwise the script will break - as dividends' row is in different format. 
 
             var price1y = PriceErrorHandler(historicalPricesTableYearly, 1);
-
-            
             var price3m = PriceErrorHandler(historicalPricesTableQuarterly, 90);
             var price1m = PriceErrorHandler(historicalPricesTableQuarterly, 30);
             var price3w = PriceErrorHandler(historicalPricesTableQuarterly, 21);
             var price2w = PriceErrorHandler(historicalPricesTableQuarterly, 14);
             var price1w = PriceErrorHandler(historicalPricesTableQuarterly, 7);
             var pricetoday = PriceErrorHandler(historicalPricesTableQuarterly, 0);
-
-            //var price3m = float.Parse(historicalPricesTableQuarterly[90][5], CultureInfo.InvariantCulture);
-            //var price1m = float.Parse(historicalPricesTableQuarterly[30][5], CultureInfo.InvariantCulture);
-            //var price3w = float.Parse(historicalPricesTableQuarterly[21][5], CultureInfo.InvariantCulture);
-            //var price2w = float.Parse(historicalPricesTableQuarterly[14][5], CultureInfo.InvariantCulture);
-            //var price1w = float.Parse(historicalPricesTableQuarterly[7][5], CultureInfo.InvariantCulture);
-            //var pricetoday = float.Parse(historicalPricesTableQuarterly[0][5], CultureInfo.InvariantCulture);
 
             var change1y = ChangeRatio(price1y, pricetoday);
             var change3m = ChangeRatio(price3m, pricetoday);
@@ -171,19 +162,56 @@ namespace StocKings
             var change1w = ChangeRatio(price1w, pricetoday);
 
             // We define two lists to pass the historical prices and calculated values to the output excel file
-            var historicalPrices = new List<float>()
+            var historicalPrices = new List<object>()
             {
                 price1y, price3m, price1m, price3w, price2w, price1m, pricetoday
             };
 
-            var calculatedRatios = new List<float>()
+            var calculatedRatios = new List<object>()
             {
                 change1y, change3m, change1m, change3w, change2w, change1w
             };
 
-            var outputList = new List<List<float>>()
+            // The last step is to extract dividends details and save it into a list
+            var dividendParser = new TableParser(
+                String.Format(
+                    "https://finance.yahoo.com/quote/{0}/key-statistics", 
+                    companyTicker)
+                );
+            var dividendsInfoTable = dividendParser.GetYahooDividends;
+            var dividendsList = new List<object>()
             {
-                historicalPrices, calculatedRatios
+                "N/A", "N/A", "N/A", "N/A"
+            };
+            foreach (var row in dividendsInfoTable)
+            {
+                if (row[0].ToString().Contains("Forward Annual Dividend Rate"))
+                {
+                    dividendsList[0] = row[1].ToString();
+                }
+
+                else if (row[0].ToString().Contains("Forward Annual Dividend Yield"))
+                {
+                    dividendsList[1] = row[1].ToString();
+                }
+
+                else if (
+                    row[0].ToString().Contains("Dividend Date") &
+                    row[0].ToString().Contains("Ex") == false
+                    )
+                    {
+                        dividendsList[2] = row[1].ToString();
+                    }
+
+                else if (row[0].ToString().Contains("Ex-Dividend"))
+                {
+                    dividendsList[3] = row[1].ToString();
+                }
+            }
+
+            var outputList = new List<List<object>>()
+            {
+                historicalPrices, calculatedRatios, dividendsList
             };
 
             Thread.Sleep(2000);

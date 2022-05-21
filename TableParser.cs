@@ -16,11 +16,23 @@ namespace StocKings
 
         HtmlWeb web = new HtmlWeb();
         private string url;
-        private HtmlDocument htmlDoc;
+        private HtmlDocument? htmlDoc;
         public TableParser(string urlLink)
         {
-            url = urlLink;
-            htmlDoc = web.Load(url);
+            
+            // Sometimes our query is blocked by server. We introduce try catch block which will deal with that issue (partialy as we will be skipping one entry)
+            // With the below try and catch htmlDoc will be null which will raise another handled error in GetTable method. 
+            try
+            {
+                url = urlLink;
+                htmlDoc = web.Load(url);
+            }
+            catch
+            {
+                htmlDoc = null;
+                Thread.Sleep(100000);
+            }
+            
         }
 
         public List<List<string>> GetTable
@@ -29,7 +41,7 @@ namespace StocKings
             {
                 try
                 {
-                    var table = htmlDoc.DocumentNode.SelectSingleNode("//table[@class='table marketcap-table dataTable']")
+                    var table = htmlDoc.DocumentNode.SelectSingleNode("//table[@class='default-table table marketcap-table dataTable']")
                     .Descendants("tr")
                      .Skip(1)
                     .Where(tr => tr.Elements("td").Count() > 1)
@@ -80,6 +92,28 @@ namespace StocKings
                     var table = htmlDoc.DocumentNode.SelectSingleNode("//table[@data-test='historical-prices']")
                     .Descendants("tr")
                      
+                    .Where(tr => tr.Elements("td").Count() > 1)
+                    .Select(tr => tr.Elements("td")
+                    .Select(td => td.InnerText.Trim()).ToList())
+                    .ToList();
+                    return table;
+                }
+                catch (Exception e)
+                {
+                    var table = new List<List<string>>();
+                    return table;
+                }
+            }
+        }
+
+        public List<List<string>> GetYahooDividends
+        {
+            get
+            {
+                try
+                {
+                    var table = htmlDoc.DocumentNode.SelectSingleNode("//span[contains(text(),'Dividends')]/ancestor::h3/following-sibling::table")
+                    .Descendants("tr")
                     .Where(tr => tr.Elements("td").Count() > 1)
                     .Select(tr => tr.Elements("td")
                     .Select(td => td.InnerText.Trim()).ToList())

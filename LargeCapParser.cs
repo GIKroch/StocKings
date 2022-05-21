@@ -50,6 +50,10 @@ namespace StocKings
             ws.Range["O" + rowIndex.ToString()].Value2 = "3 weeks ratio";
             ws.Range["P" + rowIndex.ToString()].Value2 = "2 weeks ratio";
             ws.Range["Q" + rowIndex.ToString()].Value2 = "1 week ratio";
+            ws.Range["R" + rowIndex.ToString()].Value2 = "Forward Annual Dividend Rate";
+            ws.Range["S" + rowIndex.ToString()].Value2 = "Forward Annual Dividend Yield";
+            ws.Range["T" + rowIndex.ToString()].Value2 = "Dividend Date";
+            ws.Range["U" + rowIndex.ToString()].Value2 = "Ex-Dividend Date";
 
             // Formatting percentage columns
             ws.Range["L:Q"].NumberFormat = "###,##.00%";
@@ -71,6 +75,8 @@ namespace StocKings
                     var countryPageLink = countryLink + i.ToString();
                     TableParser parser = new TableParser(countryPageLink);
                     var table = parser.GetTable;
+                
+                    
                     Console.WriteLine(countryPageLink);
                     
                     if (table.Count == 0)

@@ -32,8 +32,13 @@ namespace StocKings
                 //Console.WriteLine(lastOverWriteDate);   
                 if (lastOverWriteDate <= quarterAgo)
                 {
+                    Console.WriteLine("Existing Large Caps File is older than a quarter. We must refresh it.");
                     var Parser = new ParseResult();
                     Parser.LargeCapParser(myDirectory);
+                }
+                else
+                {
+                    Console.WriteLine("Existing Large Caps File is fresher than a quarter. We don't refresh it.");
                 }
             }
             else
@@ -41,8 +46,8 @@ namespace StocKings
                 var Parser = new ParseResult();
                 Parser.LargeCapParser(myDirectory);
             }
-            
-            
+
+
             //Now we reopen the file created by parser
             var excelApp = new Excel.Application();
             var excelWorkbook = excelApp.Workbooks.Open(largeCapsFilePath);
@@ -53,15 +58,15 @@ namespace StocKings
             //For iterration purpose we need rowIndex variable
             var rowIndex = 2;
             var isEmpty = false;
-            
+
             // We also initialize Yahoo Finance Parser which will obtain historical prices and their ratio for tickers
-            
+
             var Yahoo = new YahooFinanceParser();
 
 
             while (isEmpty == false)
             {
-                
+
                 var ticker = ws.Range["B" + rowIndex.ToString()].Value2;
                 var companyName = ws.Range["A" + rowIndex.ToString()].Value2;
                 if (ticker == null)
@@ -76,9 +81,10 @@ namespace StocKings
                 Console.WriteLine(ticker);
 
                 // The output of parser is list of list of floats
-                var financialsList  = Yahoo.Parser(ticker, companyName);
+                var financialsList = Yahoo.Parser(ticker, companyName);
                 var historicalPrices = financialsList[0];
                 var calculatedRatios = financialsList[1];
+                var dividendList = financialsList[2];
 
                 // Now we save obtained values to excel sheet
                 ws.Range["E" + rowIndex.ToString()].Value2 = historicalPrices[0];
@@ -95,7 +101,11 @@ namespace StocKings
                 ws.Range["O" + rowIndex.ToString()].Value2 = calculatedRatios[3];
                 ws.Range["P" + rowIndex.ToString()].Value2 = calculatedRatios[4];
                 ws.Range["Q" + rowIndex.ToString()].Value2 = calculatedRatios[5];
-                
+
+                ws.Range["R" + rowIndex.ToString()].Value2 = dividendList[0];
+                ws.Range["S" + rowIndex.ToString()].Value2 = dividendList[1];
+                ws.Range["T" + rowIndex.ToString()].Value2 = dividendList[2];
+                ws.Range["U" + rowIndex.ToString()].Value2 = dividendList[3];
 
                 rowIndex++;
 
@@ -111,12 +121,9 @@ namespace StocKings
 
             watch.Stop();
             var elapsedTime = watch.Elapsed;
+
             Console.WriteLine("Execution Time was: ", elapsedTime.ToString());
 
-
-
-
-            
 
         }
     }
