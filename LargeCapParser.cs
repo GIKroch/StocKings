@@ -67,9 +67,10 @@ namespace StocKings
             {
                 var countryLink = String.Format("https://companiesmarketcap.com/{0}/largest-companies-in-{1}-by-market-cap/?page=", country[0], country[1]);
                 var isNotNull = false;
+                var isSmall = false;
                 var i = 1;
                 
-                while (isNotNull == false)
+                while (isNotNull == false && isSmall == false)
                 {
                     
                     var countryPageLink = countryLink + i.ToString();
@@ -110,11 +111,33 @@ namespace StocKings
                                 ticker = "NULL";
                             }
                             
-                            var companyMarketCap = companyInfo[2];                            
-                            
+                            // Converting companyMarketCap to numerical value
+                            string companyMarketCap = companyInfo[2];
+                            float companyMarketCapAdjusted = 0;
+                            if (companyMarketCap.Contains("T"))
+                            {
+                                companyMarketCapAdjusted = float.Parse(companyMarketCap.Replace("T", string.Empty).Replace("$", string.Empty)) * 1000000000000;
+                            }
+                            else if (companyMarketCap.Contains("B"))
+                            {
+                                companyMarketCapAdjusted = float.Parse(companyMarketCap.Replace("B", string.Empty).Replace("$", string.Empty)) * 1000000000;
+                            }
+                            else if (companyMarketCap.Contains("M"))
+                            {
+                                companyMarketCapAdjusted = float.Parse(companyMarketCap.Replace("B", string.Empty).Replace("$", string.Empty)) * 1000000;
+                            }
+
+                            // To reduce the number of parsed entries, we limit ourself to large companies > 1bn 
+
+                            if (companyMarketCapAdjusted < 1000000000)
+                            {
+                                isSmall = true;
+                                break;
+                            }
+
                             ws.Range["A" + rowIndex.ToString()].Value = companyName;
                             ws.Range["B" + rowIndex.ToString()].Value = ticker;
-                            ws.Range["C" + rowIndex.ToString()].Value = companyMarketCap;
+                            ws.Range["C" + rowIndex.ToString()].Value = companyMarketCapAdjusted;
                             ws.Range["D" + rowIndex.ToString()].Value = country[0];
 
                             rowIndex++;
