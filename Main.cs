@@ -6,10 +6,20 @@ using System.Threading.Tasks;
 using System.Reflection;
 using Excel = Microsoft.Office.Interop.Excel;
 using System.Diagnostics;
-
+using CsvHelper;
+using System.Security.Cryptography.X509Certificates;
+using CsvHelper.Configuration;
+using System.Globalization;
 
 namespace StocKings
 {
+    public class LargeCaps
+    {
+        public string CompanyName { get; set; }
+        public string Ticker { get; set; }
+        public float MarketCap { get; set; }
+        public string Country { get; set; }
+    }
     public class Program
     {
         public static void Main()
@@ -18,7 +28,7 @@ namespace StocKings
             // Before running the large cap parser we define our working directory. 
             string myDirectory = new FileInfo(Assembly.GetEntryAssembly().Location).Directory.ToString();
             Console.WriteLine(myDirectory);
-            var largeCapsFilePath = myDirectory + @"\LargeCaps.xlsx";
+            var largeCapsFilePath = myDirectory + @"\LargeCaps.csv";
 
             //First we check if the files exists and what is its creation date. 
             //There is no need to run Large Cap parser often, as market caps don't change intesively. 
@@ -43,88 +53,100 @@ namespace StocKings
             }
             else
             {
-                var Parser = new ParseResult();
+                var Parser = new ParseResultCsv();
                 Parser.LargeCapParser(myDirectory);
             }
 
+            var configuration = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                Encoding = Encoding.UTF8, // Our file uses UTF-8 encoding.
+                Delimiter = "," // The delimiter is a comma.
+            };
 
-            //Now we reopen the file created by parser
-            var excelApp = new Excel.Application();
-            var excelWorkbook = excelApp.Workbooks.Open(largeCapsFilePath);
-            excelApp.Visible = true;
-            var ws = (Excel.Worksheet)excelWorkbook.Worksheets["LargeCaps"];
-
-            //In the next step we iterrate through tickers, they are saved in column B 
-            //For iterration purpose we need rowIndex variable
-            var rowIndex = 2;
-            var isEmpty = false;
-
-            // We also initialize Yahoo Finance Parser which will obtain historical prices and their ratio for tickers
-
+            // Initialize Yahoo Finance Parser which will obtain historical prices and their ratio for tickers
             var Yahoo = new YahooFinanceParser();
 
+            // Intializing output file
+            var csvOutput = new StringBuilder();
+            var titleLine = string.Format(
+                $"{"Company Name"}," +
+                $"{"Ticker"}," +
+                $"{"Market Cap"}," +
+                $"{"Country"}," +
+                $"{"Price 1 year ago"}," +
+                $"{"Price 3 months ago"}," +
+                $"{"Price 1 month ago"}," +
+                $"{"Price 3 weeks ago"}," +
+                $"{"Price 2 weeks ago"}," +
+                $"{"Price 1 week ago"}," +
+                $"{"Price Today"}," +
+                $"{"1 year ratio"}," +
+                $"{"3 months ratio"}," +
+                $"{"1 month ratio"}," +
+                $"{"3 weeks ratio"}," +
+                $"{"2 weeks ratio"}," +
+                $"{"1 week ratio"}," +
+                $"{"Forward Annual Dividend Rate"}," +
+                $"{"Forward Annual Dividend Yield"}," +
+                $"{"Dividend Date"}," +
+                $"{"Ex-Dividend Date"}"
+                );
+            csvOutput.AppendLine( titleLine );  
 
-            while (isEmpty == false)
+            // Reading CSV file with LargeCap details 
+            using (var fs = File.Open(largeCapsFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-
-                var ticker = ws.Range["B" + rowIndex.ToString()].Value2;
-                var companyName = ws.Range["A" + rowIndex.ToString()].Value2;
-                if (ticker == null)
+                using (var textReader = new StreamReader(fs, Encoding.UTF8))
+                using (var csv = new CsvReader(textReader, configuration))
                 {
-                    Console.WriteLine("All tickers processed");
-                    isEmpty = true;
-                    break;
+                    var data = csv.GetRecords<LargeCaps>();
+
+                    foreach (var largeCap in data)
+                    {                        
+                        Console.WriteLine(largeCap.Ticker);
+
+                        // The output of parser is list of list of floats
+                        var financialsList = Yahoo.Parser(largeCap.Ticker, largeCap.CompanyName);
+                        var historicalPrices = financialsList[0];
+                        var calculatedRatios = financialsList[1];
+                        var dividendList = financialsList[2];
+
+                        var newLine = string.Format(
+                            $"{largeCap.CompanyName}," +
+                            $"{largeCap.Ticker}," +
+                            $"{largeCap.MarketCap}," +
+                            $"{largeCap.Country}," +
+                            $"{historicalPrices[0]}," +
+                            $"{historicalPrices[1]}," +
+                            $"{historicalPrices[2]}," +
+                            $"{historicalPrices[3]}," +
+                            $"{historicalPrices[4]}," +
+                            $"{historicalPrices[5]}," +
+                            $"{historicalPrices[6]}," +
+                            $"{calculatedRatios[0]}," +
+                            $"{calculatedRatios[1]}," +
+                            $"{calculatedRatios[2]}," +
+                            $"{calculatedRatios[3]}," +
+                            $"{calculatedRatios[4]}," +
+                            $"{calculatedRatios[5]}," +
+                            $"{dividendList[0]}," +
+                            $"{dividendList[1]}," +
+                            $"{dividendList[2]}," +
+                            $"{dividendList[3]}"
+                        );
+
+                        csvOutput.AppendLine( newLine );
+
+                    }
                 }
-                // We must ensure our ticker and company arguments are in String format. 
-                ticker = ticker.ToString();
-                companyName = companyName.ToString();
-                Console.WriteLine(ticker);
-
-                // The output of parser is list of list of floats
-                var financialsList = Yahoo.Parser(ticker, companyName);
-                var historicalPrices = financialsList[0];
-                var calculatedRatios = financialsList[1];
-                var dividendList = financialsList[2];
-
-                // Now we save obtained values to excel sheet
-                ws.Range["E" + rowIndex.ToString()].Value2 = historicalPrices[0];
-                ws.Range["F" + rowIndex.ToString()].Value2 = historicalPrices[1];
-                ws.Range["G" + rowIndex.ToString()].Value2 = historicalPrices[2];
-                ws.Range["H" + rowIndex.ToString()].Value2 = historicalPrices[3];
-                ws.Range["I" + rowIndex.ToString()].Value2 = historicalPrices[4];
-                ws.Range["J" + rowIndex.ToString()].Value2 = historicalPrices[5];
-                ws.Range["K" + rowIndex.ToString()].Value2 = historicalPrices[6];
-
-                ws.Range["L" + rowIndex.ToString()].Value2 = calculatedRatios[0];
-                ws.Range["M" + rowIndex.ToString()].Value2 = calculatedRatios[1];
-                ws.Range["N" + rowIndex.ToString()].Value2 = calculatedRatios[2];
-                ws.Range["O" + rowIndex.ToString()].Value2 = calculatedRatios[3];
-                ws.Range["P" + rowIndex.ToString()].Value2 = calculatedRatios[4];
-                ws.Range["Q" + rowIndex.ToString()].Value2 = calculatedRatios[5];
-
-                ws.Range["R" + rowIndex.ToString()].Value2 = dividendList[0];
-                ws.Range["S" + rowIndex.ToString()].Value2 = dividendList[1];
-                ws.Range["T" + rowIndex.ToString()].Value2 = dividendList[2];
-                ws.Range["U" + rowIndex.ToString()].Value2 = dividendList[3];
-
-                rowIndex++;
-
-
             }
-
-            // Disabling alerts
-            excelApp.DisplayAlerts = false;
-
-            excelWorkbook.SaveAs(myDirectory + @"\LargeCapsPrices.xlsx");
-            excelWorkbook.Close();
-            excelApp.Quit();
+            
+            File.WriteAllText("LargeCapsWithPrices.csv", csvOutput.ToString() );
 
             watch.Stop();
             var elapsedTime = watch.Elapsed;
 
             Console.WriteLine("Execution Time was: ", elapsedTime.ToString());
-
-
         }
     }
 }
