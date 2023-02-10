@@ -25,10 +25,11 @@ namespace StocKings
         public static void Main()
         {
             var watch = Stopwatch.StartNew();
+
             // Before running the large cap parser we define our working directory. 
             string myDirectory = new FileInfo(Assembly.GetEntryAssembly().Location).Directory.ToString();
             Console.WriteLine(myDirectory);
-            var largeCapsFilePath = myDirectory + @"\LargeCaps.csv";
+            var largeCapsFilePath = Path.Combine(myDirectory, "LargeCaps.csv");
 
             //First we check if the files exists and what is its creation date. 
             //There is no need to run Large Cap parser often, as market caps don't change intesively. 
@@ -60,7 +61,8 @@ namespace StocKings
             var configuration = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 Encoding = Encoding.UTF8, // Our file uses UTF-8 encoding.
-                Delimiter = "," // The delimiter is a comma.
+                Delimiter = ",", // The delimiter is a comma.
+                MissingFieldFound = null
             };
 
             // Initialize Yahoo Finance Parser which will obtain historical prices and their ratio for tickers
@@ -102,40 +104,48 @@ namespace StocKings
                     var data = csv.GetRecords<LargeCaps>();
 
                     foreach (var largeCap in data)
-                    {                        
-                        Console.WriteLine(largeCap.Ticker);
+                    {
+                        try
+                        {
+                            Console.WriteLine(largeCap.Ticker);
+                            // The output of parser is list of list of floats
+                            var financialsList = Yahoo.Parser(largeCap.Ticker, largeCap.CompanyName);
+                            var historicalPrices = financialsList[0];
+                            var calculatedRatios = financialsList[1];
+                            var dividendList = financialsList[2];
 
-                        // The output of parser is list of list of floats
-                        var financialsList = Yahoo.Parser(largeCap.Ticker, largeCap.CompanyName);
-                        var historicalPrices = financialsList[0];
-                        var calculatedRatios = financialsList[1];
-                        var dividendList = financialsList[2];
+                            var newLine = string.Format(
+                                $"{largeCap.CompanyName}," +
+                                $"{largeCap.Ticker}," +
+                                $"{largeCap.MarketCap}," +
+                                $"{largeCap.Country}," +
+                                $"{historicalPrices[0]}," +
+                                $"{historicalPrices[1]}," +
+                                $"{historicalPrices[2]}," +
+                                $"{historicalPrices[3]}," +
+                                $"{historicalPrices[4]}," +
+                                $"{historicalPrices[5]}," +
+                                $"{historicalPrices[6]}," +
+                                $"{calculatedRatios[0]}," +
+                                $"{calculatedRatios[1]}," +
+                                $"{calculatedRatios[2]}," +
+                                $"{calculatedRatios[3]}," +
+                                $"{calculatedRatios[4]}," +
+                                $"{calculatedRatios[5]}," +
+                                $"{dividendList[0]}," +
+                                $"{dividendList[1]}," +
+                                $"{dividendList[2]}," +
+                                $"{dividendList[3]}"
+                            );
 
-                        var newLine = string.Format(
-                            $"{largeCap.CompanyName}," +
-                            $"{largeCap.Ticker}," +
-                            $"{largeCap.MarketCap}," +
-                            $"{largeCap.Country}," +
-                            $"{historicalPrices[0]}," +
-                            $"{historicalPrices[1]}," +
-                            $"{historicalPrices[2]}," +
-                            $"{historicalPrices[3]}," +
-                            $"{historicalPrices[4]}," +
-                            $"{historicalPrices[5]}," +
-                            $"{historicalPrices[6]}," +
-                            $"{calculatedRatios[0]}," +
-                            $"{calculatedRatios[1]}," +
-                            $"{calculatedRatios[2]}," +
-                            $"{calculatedRatios[3]}," +
-                            $"{calculatedRatios[4]}," +
-                            $"{calculatedRatios[5]}," +
-                            $"{dividendList[0]}," +
-                            $"{dividendList[1]}," +
-                            $"{dividendList[2]}," +
-                            $"{dividendList[3]}"
-                        );
+                            csvOutput.AppendLine(newLine);
+                        }
+                        catch
+                        {
+                            continue;
+                        }
 
-                        csvOutput.AppendLine( newLine );
+                        
 
                     }
                 }
