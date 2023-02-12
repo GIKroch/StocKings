@@ -9,10 +9,10 @@ namespace StocKings
 {
     public class LargeCaps
     {
-        public string CompanyName { get; set; }
-        public string Ticker { get; set; }
-        public float MarketCap { get; set; }
-        public string Country { get; set; }
+        public string? CompanyName { get; set; }
+        public string? Ticker { get; set; }
+        public float? MarketCap { get; set; }
+        public string? Country { get; set; }
     }
     public class Program
     {
@@ -54,7 +54,10 @@ namespace StocKings
             var configuration = new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 Encoding = Encoding.UTF8, // Our file uses UTF-8 encoding.
-                Delimiter = "|" // The delimiter is a comma.
+                Delimiter = "|", 
+                MissingFieldFound = null,
+                 
+                
             };
 
             // Initialize Yahoo Finance Parser which will obtain historical prices and their ratio for tickers
@@ -99,6 +102,7 @@ namespace StocKings
                     {                        
                         Console.WriteLine(largeCap.Ticker);
 
+                      
                         // The output of parser is list of list of floats
                         var financialsList = Yahoo.Parser(largeCap.Ticker, largeCap.CompanyName);
                         var historicalPrices = financialsList[0];
@@ -129,8 +133,7 @@ namespace StocKings
                             $"{dividendList[3]}"
                         );
 
-                        csvOutput.AppendLine( newLine );
-
+                        csvOutput.AppendLine(newLine);
                     }
                 }
             }
